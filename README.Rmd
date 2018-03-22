@@ -1,31 +1,28 @@
+---
+title: "README"
+output: github_document
+---
 
+This script is a quick proof-of-concept to explore connecting to AWS Redshift, identifying a cluster snapshot, restoring that cluster, then shutting it down again. This is a first step in a package which could help automate some database management tasks
 
-# -------------------------------------------------------------
-# This script is a quick proof-of-concept to explore
-# connecting to AWS Redshift, identifying a cluster
-# snapshot, restoring that cluster, then shutting it down 
-# again. This is a first step in a package which could help 
-# automate some database management tasks
-# 
-# -Tim Kiely, 9/9/2016
-#  timothy.j.kiely@gmail.com
-# -------------------------------------------------------------
+-Tim Kiely, 9/9/2016
+`tkiely@hodgeswarelliott.com`
+ 
 
-# -------------------------------------------------------------
-# Note that you must first set up the aws CLI, see: 
-# http://docs.aws.amazon.com/cli/latest/userguide/installing.html
-# 
-# You will also need to grant access to your user to access
-# your Redshift db through IAM settings, see: 
-# http://docs.aws.amazon.com/redshift/latest/mgmt/redshift-iam-authentication-access-control.html
-# -------------------------------------------------------------
+# SET UP AWS CLI
 
+Note that you must first set up the aws CLI, see: 
+http://docs.aws.amazon.com/cli/latest/userguide/installing.html
 
-# requries:
-library(dplyr)
-library(jsonlite)
+You will also need to grant access to your user to access
+your Redshift db through IAM settings, see: 
+http://docs.aws.amazon.com/redshift/latest/mgmt/redshift-iam-authentication-access-control.html
 
+# Initiating the cluster from a snapshot
 
+Using `system()` commands, we grab the most recent snapshot from our AWS account, tell the cluster to boot up, then ping the server every few seconds until the cluster is ready to go. 
+
+```{r}
 # issue an AWS CLI command to list all available Redshift snapshots, catpure as JSON
 systext_snapshots <- system("aws redshift describe-cluster-snapshots",intern = T)
 
@@ -77,21 +74,29 @@ our_nodes <- if(exists('clust_id')){
 
 
 
-# extract address and port, to be used for querrying
-our_nodes$Endpoint.Address 
-our_nodes$Endpoint.Port
+# extract address and port, to be used for querrying later
+address <- our_nodes$Endpoint.Address 
+port <- our_nodes$Endpoint.Port
+
+```
 
 
-# shut it down
+# Shutting the cluster down
+
+```{r}
+
+# a command to shut the cluster down, using the cluster-identifier
 shut_down_cmd <- paste0("aws redshift delete-cluster --cluster-identifier "
                         , our_nodes$ClusterIdentifier
                         ," --skip-final-cluster-snapshot")
 
-# system(shut_down_cmd)
+system(shut_down_cmd)
 
 
 
 closeAllConnections()
-message("Cluster boot time: ",round(end_time-start_time,2)," mins")
-units(difftime(end_time,start_time))
+message("Cluster boot time: ",round(end_time-start_time,2),units(end_time,start_time))
+
+```
+ 
 
